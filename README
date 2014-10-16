@@ -1,0 +1,42 @@
+You need to install flask and mongodb, pymongo for this application
+Mongo should be configured to the default settings
+
+TO RUN:
+start mongod in the background
+python app.py
+
+the sample game_id to use is "random"
+
+endpoints(kind of explanatory in app.py)
+  things to note. The arguments to most of the endpoints are token and game_id.
+  /create/<username> - a post endpoint that needs a username, returns a token
+  /start - a post endpoint that needs user_token (token from start), game_id
+  /move - a post endpoint that needs user_token, game_id, move (a number for the sample game). Returns the state of the game after that move. If the game is won or lost, it restarts the game.
+  /status - a get endpoint that needs user_token, game_id
+  /metrics - get endpoint that needs user_token
+  /allmetrics - get endpoint
+
+
+Architechture
+The game maintains state by passing the game state, wins and losses into a mongo database
+The documents in mongo are formatted like so:
+  {_id: token, timestamp: *some number*, *game name*: {state: *current game state*, *win*: win, *lose*: lose, *total*: total}}
+We can have multiple games running at once, so a document in mongo can have multiple *game names*, each with
+  the state and stats of that user playing that game.
+The user has to pass in the token into pretty much all the API's so the server knows what to pull out of mongodb
+
+Pluggability:
+  A game only needs to implement 3 methods, as noted in games.py
+  We can have any game, and write a wrapper around the game to have those 3 methods.
+  All the states returned from move and start are saved to the DB, and then when a new move is made, we grab those states
+    and perform computation on them.
+
+Expiring tokens:
+  We add the timestamp for when the user is created, and then any calls to move or status check if the user is still valid
+  to work with. Metrics aren't protected because we may still want to see what an expired user did.
+
+There are basically 3 files
+  app.py - simple wrapper to perform all the web functions, as well as validation
+  gameserver.py - performs all the server logic, such as saving, and extracting metrics.
+  database.py - database primitive functions
+
